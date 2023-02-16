@@ -23,39 +23,39 @@ uint8_t buffer[16] = {};
 int main()
 {
 	serialInit();
-	serialWrite("SinoWealth 8051-based MCU flash dumper\n");
+	serialWrite("\r\nSinoWealth 8051-based MCU flash dumper\r\n");
 
 	JTAG jtag;
 	jtag.switchMode(150);
 
 	if (jtag.check())
 	{
-		serialWrite("Connection established\n");
+		serialWrite("Connection established\r\n");
 
 #if CHIP_PRODUCT_BLOCK == 1 && CHIP_CUSTOM_BLOCK == 3
-		serialWrite("\nDumping part number:\n");
+		serialWrite("\r\nDumping part number:\r\n");
 
 		jtag.readFlash((uint8_t*)&buffer, 0x1200, true);
 		for (uint8_t n = 0; n < 6; ++n)
 			serialWriteHex(buffer[n + 9]);
-		serialWrite("\n");
+		serialWrite("\r\n");
 #endif
 
-		serialWrite("\nDumping flash memory:\n");
+		serialWrite("\r\nDumping flash memory:\r\n");
 
 		for (uint16_t a = 0, m = 0; m < CHIP_FLASH_SIZE >> 4; a += 16, ++m)
 		{
 			jtag.readFlash((uint8_t*)&buffer, a, false);
 			for (auto n : buffer)
 				serialWriteHex(n);
-			serialWrite("\n");
+			serialWrite("\r\n");
 		}
 
-		serialWrite("\nDone!\n");
+		serialWrite("\r\nDone!\r\n");
 	}
 	else
 	{
-		serialWrite("Connection failed\n");
+		serialWrite("Connection failed\r\n");
 	}
 
 	for (;;);
