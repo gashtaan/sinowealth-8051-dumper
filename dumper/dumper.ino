@@ -36,7 +36,7 @@ int main()
 		serialWrite("\r\nDumping part number:\r\n");
 
 		jtag.readFlash((uint8_t*)&buffer, 0x1200, true);
-		for (uint8_t n = 0; n < 6; ++n)
+		for (uint8_t n = 0; n < 5; ++n)
 			serialWriteHex(buffer[n + 9]);
 		serialWrite("\r\n");
 #endif
