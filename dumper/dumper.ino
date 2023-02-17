@@ -43,7 +43,7 @@ int main()
 
 		serialWrite("\r\nDumping flash memory:\r\n");
 
-		for (uint16_t a = 0, m = 0; m < CHIP_FLASH_SIZE >> 4; a += 16, ++m)
+		for (uint32_t a = 0; a < CHIP_FLASH_SIZE; a += 16)
 		{
 			jtag.readFlash((uint8_t*)&buffer, a, false);
 			for (auto n : buffer)

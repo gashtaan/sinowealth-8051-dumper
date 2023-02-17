@@ -38,7 +38,7 @@ public:
 	void ping() const;
 	bool check() const;
 
-	void readFlash(uint8_t* buffer, uint16_t address, bool customBlock);
+	void readFlash(uint8_t* buffer, uint32_t address, bool customBlock);
 
 private:
 	void sendMode(uint8_t value) const;

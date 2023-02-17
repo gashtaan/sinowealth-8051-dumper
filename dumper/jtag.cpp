@@ -188,21 +188,25 @@ void JTAG::ping() const
 	sendData8(0xFF);
 }
 
-void JTAG::readFlash(uint8_t* buffer, uint16_t address, bool customBlock)
+void JTAG::readFlash(uint8_t* buffer, uint32_t address, bool customBlock)
 {
 	reset();
 	switchMode(150);
 
-#if CHIP_TYPE > 1
+#if CHIP_TYPE != 1
 	sendData8(0x46);
 	sendData8(0xFE);
 	sendData8(0xFF);
 #endif
 
 	sendData8(0x40);
-	sendData8(address & 0x00FF);
+	sendData8(address & 0x000000FF);
 	sendData8(0x41);
-	sendData8((address & 0xFF00) >> 8);
+	sendData8((address & 0x0000FF00) >> 8);
+#if CHIP_TYPE == 4 || CHIP_TYPE == 7
+	sendData8(0x4C);
+	sendData8((address & 0x00FF0000) >> 16);
+#endif
 
 	sendData8(customBlock ? 0x4A : 0x44);
 
