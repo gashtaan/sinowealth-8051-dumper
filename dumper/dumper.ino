@@ -26,7 +26,7 @@ int main()
 	serialWrite("\r\nSinoWealth 8051-based MCU flash dumper\r\n");
 
 	JTAG jtag;
-	jtag.switchMode(150);
+	jtag.connect();
 
 	if (jtag.check())
 	{

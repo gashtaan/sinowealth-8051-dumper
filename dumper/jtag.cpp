@@ -27,7 +27,13 @@ JTAG::JTAG()
 	DDRD |= _BV(TMS);
 	DDRD |= _BV(TCK);
 
-	clrBit(TDO);
+	clrBit(TCK);
+	clrBit(TDI);
+	clrBit(TMS);
+}
+
+void JTAG::connect()
+{
 	setBit(TCK);
 	setBit(TDI);
 	setBit(TMS);
@@ -77,7 +83,7 @@ JTAG::JTAG()
 	clrBit(TCK);
 	_delay_us(2);
 
-	sendMode(150);
+	sendMode(Mode::ICP);
 
 	setBit(TCK);
 	_delay_us(2);
@@ -95,18 +101,19 @@ JTAG::JTAG()
 	clrBit(TMS);
 	_delay_us(5);
 
-	m_mode = 1;
+	m_mode = Mode::READY;
 }
 
 void JTAG::reset()
 {
-	if (m_mode == 0)
+	if (m_mode == Mode::ERROR)
 		return;
 
-	if (m_mode == 165)
+	if (m_mode == Mode::JTAG)
 	{
 		setBit(TMS);
 
+		// reset JTAG state
 		for (uint8_t n = 0; n < 35; ++n)
 		{
 			setBit(TCK);
@@ -128,15 +135,15 @@ void JTAG::reset()
 		_delay_us(2);
 	}
 
-	m_mode = 1;
+	m_mode = Mode::READY;
 }
 
-void JTAG::switchMode(uint8_t mode)
+void JTAG::switchMode(Mode mode)
 {
 	if (m_mode == mode)
 		return;
 
-	if (m_mode != 1)
+	if (m_mode != Mode::READY)
 		reset();
 
 	m_mode = mode;
@@ -146,7 +153,7 @@ void JTAG::switchMode(uint8_t mode)
 
 	sendMode(m_mode);
 
-	if (m_mode == 150)
+	if (m_mode == Mode::ICP)
 	{
 		_delay_us(800);
 		setBit(TCK);
@@ -154,7 +161,7 @@ void JTAG::switchMode(uint8_t mode)
 
 		ping();
 	}
-	else if (m_mode == 165)
+	else if (m_mode == Mode::JTAG)
 	{
 		setBit(TMS);
 		pulseClocks(6);
@@ -165,33 +172,35 @@ void JTAG::switchMode(uint8_t mode)
 	}
 }
 
-bool JTAG::check() const
+bool JTAG::check()
 {
-	clrBit(TCK);
+	switchMode(Mode::ICP);
 
-	sendData8(0x40);
+	sendData8(ICP_SET_IB_OFFSET_L);
 	sendData8(0x69);
-	sendData8(0x41);
-	sendData8(0xFF);
+	sendData8(ICP_SET_IB_OFFSET_H);
 	sendData8(0xFF);
 
-	sendData8(0x43);
+	sendData8(ICP_GET_IB_OFFSET);
 	auto b = receiveData8();
-	receiveData8();
+	(void)receiveData8();
 
 	return (b == 0x69);
 }
 
 void JTAG::ping() const
 {
-	sendData8(0x49);
+	if (m_mode != Mode::ICP)
+		return;
+
+	sendData8(ICP_PING);
 	sendData8(0xFF);
 }
 
 void JTAG::readFlash(uint8_t* buffer, uint32_t address, bool customBlock)
 {
 	reset();
-	switchMode(150);
+	switchMode(Mode::ICP);
 
 #if CHIP_TYPE != 1
 	sendData8(0x46);
@@ -199,26 +208,26 @@ void JTAG::readFlash(uint8_t* buffer, uint32_t address, bool customBlock)
 	sendData8(0xFF);
 #endif
 
-	sendData8(0x40);
+	sendData8(ICP_SET_IB_OFFSET_L);
 	sendData8(address & 0x000000FF);
-	sendData8(0x41);
+	sendData8(ICP_SET_IB_OFFSET_H);
 	sendData8((address & 0x0000FF00) >> 8);
 #if CHIP_TYPE == 4 || CHIP_TYPE == 7
-	sendData8(0x4C);
+	sendData8(ICP_SET_XPAGE);
 	sendData8((address & 0x00FF0000) >> 16);
 #endif
 
-	sendData8(customBlock ? 0x4A : 0x44);
+	sendData8(customBlock ? ICP_READ_CUSTOM_BLOCK : ICP_READ_FLASH);
 
 	for (uint8_t n = 0; n < 16; ++n)
 		buffer[n] = receiveData8();
 }
 
-void JTAG::sendMode(uint8_t value) const
+void JTAG::sendMode(Mode mode) const
 {
 	for (uint8_t m = 0x80; m; m >>= 1)
 	{
-		if (value & m)
+		if (uint8_t(mode) & m)
 			setBit(TDI);
 		else
 			clrBit(TDI);

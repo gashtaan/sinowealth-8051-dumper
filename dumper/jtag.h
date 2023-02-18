@@ -33,20 +33,41 @@ public:
 	static const uint8_t TDI = 4;	// D4
 	static const uint8_t TCK = 5;	// D5
 
-	void reset();
-	void switchMode(uint8_t mode);
+	void connect();
+	bool check();
 	void ping() const;
-	bool check() const;
 
 	void readFlash(uint8_t* buffer, uint32_t address, bool customBlock);
 
 private:
-	void sendMode(uint8_t value) const;
+	enum class Mode
+	{
+		ERROR = 0,
+		READY = 1,
+		ICP = 150,
+		JTAG = 165
+	};
+
+	enum ICPCommand : uint8_t
+	{
+		ICP_SET_IB_OFFSET_L = 0x40,
+		ICP_SET_IB_OFFSET_H = 0x41,
+		ICP_GET_IB_OFFSET = 0x43,
+		ICP_READ_FLASH = 0x44,
+		ICP_PING = 0x49,
+		ICP_READ_CUSTOM_BLOCK = 0x4A,
+		ICP_SET_XPAGE = 0x4C,
+	};
+
+	void reset();
+	void switchMode(Mode mode);
+
+	void sendMode(Mode mode) const;
 	void sendData8(uint8_t value) const;
 	uint8_t receiveData8() const;
 
 	void pulseClock() const;
 	void pulseClocks(uint8_t count) const;
 
-	uint8_t m_mode = 0;
+	Mode m_mode = Mode::ERROR;
 };
