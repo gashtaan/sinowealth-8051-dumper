@@ -341,18 +341,6 @@ bool JTAG::nextState(bool tms, bool out)
 	return nextState(tms);
 }
 
-void JTAG::sendInstruction(uint8_t value)
-{
-	nextState(0); // Idle
-	nextState(1); // Select-DR
-	nextState(1); // Select-IR
-	nextState(0); // Capture-IR
-	nextState(0); // Shift-IR
-	sendBits<4, uint8_t>(value);
-	nextState(1); // Update-IR
-	nextState(0); // Idle
-}
-
 void JTAG::pulseClock()
 {
 	_delay_us(1);

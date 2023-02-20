@@ -85,8 +85,6 @@ private:
 	static bool nextState(bool tms);
 	static bool nextState(bool tms, bool out);
 
-	static void sendInstruction(uint8_t value);
-
 	template <uint8_t N, typename T>
 	static void sendBits(T value)
 	{
@@ -111,6 +109,18 @@ private:
 			value |= nextState(n == 0);
 		}
 		return value;
+	}
+
+	static void sendInstruction(uint8_t value)
+	{
+		nextState(0); // Idle
+		nextState(1); // Select-DR
+		nextState(1); // Select-IR
+		nextState(0); // Capture-IR
+		nextState(0); // Shift-IR
+		sendBits<4, uint8_t>(value);
+		nextState(1); // Update-IR
+		nextState(0); // Idle
 	}
 
 	template <uint8_t N, typename T>
