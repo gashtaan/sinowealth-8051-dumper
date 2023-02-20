@@ -28,9 +28,15 @@ int main()
 	JTAG jtag;
 	jtag.connect();
 
-	if (jtag.check())
+	if (jtag.checkICP())
 	{
 		serialWrite("Connection established\r\n");
+
+		serialWrite("\r\nJTAG ID: ");
+		uint16_t id = jtag.getID();
+		serialWriteHex(id >> 8);
+		serialWriteHex(id & 0xFF);
+		serialWrite("\r\n");
 
 #if CHIP_PRODUCT_BLOCK == 1 && CHIP_CUSTOM_BLOCK == 3
 		serialWrite("\r\nDumping part number:\r\n");

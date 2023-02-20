@@ -23,6 +23,11 @@
 #define setBit(b) (PORTD |= _BV(b))
 #define getBit(b) (PIND & _BV(b))
 
+constexpr uint8_t reverseBits(uint8_t b)
+{
+	return (b & 0x80 ? 0x01 : 0) | (b & 0x40 ? 0x02 : 0) | (b & 0x20 ? 0x04 : 0) | (b & 0x10 ? 0x08 : 0) | (b & 0x08 ? 0x10 : 0) | (b & 0x04 ? 0x20 : 0) | (b & 0x02 ? 0x40 : 0) | (b & 0x01 ? 0x80 : 0);
+}
+
 class JTAG
 {
 public:
@@ -34,8 +39,13 @@ public:
 	static const uint8_t TCK = 5;	// D5
 
 	void connect();
-	bool check();
-	void ping() const;
+
+	bool checkJTAG();
+	bool checkICP();
+
+	void pingICP() const;
+
+	uint16_t getID();
 
 	void readFlash(uint8_t* buffer, uint32_t address, bool customBlock);
 
@@ -59,15 +69,76 @@ private:
 		ICP_SET_XPAGE = 0x4C,
 	};
 
+	enum JTAGInstruction : uint8_t
+	{
+		JTAG_GET_ID = 14,
+	};
+
 	void reset();
 	void switchMode(Mode mode);
 
-	void sendMode(Mode mode) const;
-	void sendData8(uint8_t value) const;
-	uint8_t receiveData8() const;
+	static void sendMode(Mode mode);
 
-	void pulseClock() const;
-	void pulseClocks(uint8_t count) const;
+	static void sendICPData(uint8_t value);
+	static uint8_t receiveICPData();
+
+	static bool nextState(bool tms);
+	static bool nextState(bool tms, bool out);
+
+	static void sendInstruction(uint8_t value);
+
+	template <uint8_t N, typename T>
+	static void sendBits(T value)
+	{
+		uint8_t n = N;
+		while (n-- > 0)
+		{
+			nextState(n == 0, value & 1);
+			value >>= 1;
+		}
+
+		clrBit(TDI);
+	}
+
+	template <uint8_t N, typename T>
+	static T receiveBits()
+	{
+		T value = 0;
+		uint8_t n = N;
+		while (n-- > 0)
+		{
+			value <<= 1;
+			value |= nextState(n == 0);
+		}
+		return value;
+	}
+
+	template <uint8_t N, typename T>
+	static void sendData(T value)
+	{
+		nextState(1); // Select-DR
+		nextState(0); // Capture-DR
+		nextState(0); // Shift-DR
+		sendBits<N, T>(value);
+		nextState(1); // Update-DR
+		nextState(0); // Idle
+		nextState(0); // Idle? Needed, don't know why
+	}
+
+	template <uint8_t N, typename T>
+	static T receiveData()
+	{
+		nextState(1); // Select-DR
+		nextState(0); // Capture-DR
+		nextState(0); // Shift-DR
+		T value = receiveBits<N, T>();
+		nextState(1); // Update-DR
+		nextState(0); // Idle
+		return value;
+	}
+
+	static void pulseClock();
+	static void pulseClocks(uint8_t count);
 
 	Mode m_mode = Mode::ERROR;
 };

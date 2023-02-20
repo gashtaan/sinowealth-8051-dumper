@@ -111,18 +111,11 @@ void JTAG::reset()
 
 	if (m_mode == Mode::JTAG)
 	{
-		setBit(TMS);
-
 		// reset JTAG state
 		for (uint8_t n = 0; n < 35; ++n)
-		{
-			setBit(TCK);
-			_delay_us(2);
-			clrBit(TCK);
-			_delay_us(2);
-		}
-		setBit(TCK);
+			nextState(1);
 
+		setBit(TCK);
 		clrBit(TMS);
 	}
 	else
@@ -159,42 +152,80 @@ void JTAG::switchMode(Mode mode)
 		setBit(TCK);
 		_delay_us(2);
 
-		ping();
+		pingICP();
 	}
 	else if (m_mode == Mode::JTAG)
 	{
-		setBit(TMS);
-		pulseClocks(6);
-		clrBit(TMS);
-		pulseClocks(2);
+		// reset JTAG state
+		for (uint8_t n = 0; n < 8; ++n)
+			nextState(1);
 
-		// TODO...
+		sendInstruction(2);
+		sendData<4>(4);
+
+		sendInstruction(3);
+		sendData<23>(0x403000);
+		_delay_us(50);
+		sendData<23>(0x402000);
+		sendData<23>(0x400000);
+
+		// most likely breakpoints initialization
+		// SH68F881W works without it, but maybe for other chips it's mandatory
+		{
+			sendData<23>(0x630000);
+			sendData<23>(0x670000);
+			sendData<23>(0x6B0000);
+			sendData<23>(0x6F0000);
+			sendData<23>(0x730000);
+			sendData<23>(0x770000);
+			sendData<23>(0x7B0000);
+			sendData<23>(0x7F0000);
+		}
+
+		sendInstruction(2);
+		sendData<4>(1);
+
+		sendInstruction(12);
 	}
 }
 
-bool JTAG::check()
+bool JTAG::checkJTAG()
+{
+	uint16_t id = getID();
+	return (id != 0x0000 && id != 0xFFFF);
+}
+
+bool JTAG::checkICP()
 {
 	switchMode(Mode::ICP);
 
-	sendData8(ICP_SET_IB_OFFSET_L);
-	sendData8(0x69);
-	sendData8(ICP_SET_IB_OFFSET_H);
-	sendData8(0xFF);
+	sendICPData(ICP_SET_IB_OFFSET_L);
+	sendICPData(0x69);
+	sendICPData(ICP_SET_IB_OFFSET_H);
+	sendICPData(0xFF);
 
-	sendData8(ICP_GET_IB_OFFSET);
-	auto b = receiveData8();
-	(void)receiveData8();
+	sendICPData(ICP_GET_IB_OFFSET);
+	auto b = receiveICPData();
+	(void)receiveICPData();
 
 	return (b == 0x69);
 }
 
-void JTAG::ping() const
+void JTAG::pingICP() const
 {
 	if (m_mode != Mode::ICP)
 		return;
 
-	sendData8(ICP_PING);
-	sendData8(0xFF);
+	sendICPData(ICP_PING);
+	sendICPData(0xFF);
+}
+
+uint16_t JTAG::getID()
+{
+	switchMode(Mode::JTAG);
+
+	sendInstruction(JTAG_GET_ID);
+	return receiveData<16, uint16_t>();
 }
 
 void JTAG::readFlash(uint8_t* buffer, uint32_t address, bool customBlock)
@@ -203,27 +234,27 @@ void JTAG::readFlash(uint8_t* buffer, uint32_t address, bool customBlock)
 	switchMode(Mode::ICP);
 
 #if CHIP_TYPE != 1
-	sendData8(0x46);
-	sendData8(0xFE);
-	sendData8(0xFF);
+	sendICPData(0x46);
+	sendICPData(0xFE);
+	sendICPData(0xFF);
 #endif
 
-	sendData8(ICP_SET_IB_OFFSET_L);
-	sendData8(address & 0x000000FF);
-	sendData8(ICP_SET_IB_OFFSET_H);
-	sendData8((address & 0x0000FF00) >> 8);
+	sendICPData(ICP_SET_IB_OFFSET_L);
+	sendICPData(address & 0x000000FF);
+	sendICPData(ICP_SET_IB_OFFSET_H);
+	sendICPData((address & 0x0000FF00) >> 8);
 #if CHIP_TYPE == 4 || CHIP_TYPE == 7
 	sendData8(ICP_SET_XPAGE);
 	sendData8((address & 0x00FF0000) >> 16);
 #endif
 
-	sendData8(customBlock ? ICP_READ_CUSTOM_BLOCK : ICP_READ_FLASH);
+	sendICPData(customBlock ? ICP_READ_CUSTOM_BLOCK : ICP_READ_FLASH);
 
 	for (uint8_t n = 0; n < 16; ++n)
-		buffer[n] = receiveData8();
+		buffer[n] = receiveICPData();
 }
 
-void JTAG::sendMode(Mode mode) const
+void JTAG::sendMode(Mode mode)
 {
 	for (uint8_t m = 0x80; m; m >>= 1)
 	{
@@ -249,7 +280,7 @@ void JTAG::sendMode(Mode mode) const
 	_delay_us(2);
 }
 
-void JTAG::sendData8(uint8_t value) const
+void JTAG::sendICPData(uint8_t value)
 {
 	for (uint8_t m = 0x80; m; m >>= 1)
 	{
@@ -266,7 +297,7 @@ void JTAG::sendData8(uint8_t value) const
 	clrBit(TDI);
 }
 
-uint8_t JTAG::receiveData8() const
+uint8_t JTAG::receiveICPData()
 {
 	uint8_t value = 0;
 	for (uint8_t m = 1; m; m <<= 1)
@@ -282,7 +313,47 @@ uint8_t JTAG::receiveData8() const
 	return value;
 }
 
-void JTAG::pulseClock() const
+bool JTAG::nextState(bool tms)
+{
+	if (tms)
+		setBit(TMS);
+	else
+		clrBit(TMS);
+
+	setBit(TCK);
+	_delay_us(2);
+
+	bool b = getBit(TDO);
+
+	clrBit(TCK);
+	_delay_us(2);
+
+	return b;
+}
+
+bool JTAG::nextState(bool tms, bool out)
+{
+	if (out)
+		setBit(TDI);
+	else
+		clrBit(TDI);
+
+	return nextState(tms);
+}
+
+void JTAG::sendInstruction(uint8_t value)
+{
+	nextState(0); // Idle
+	nextState(1); // Select-DR
+	nextState(1); // Select-IR
+	nextState(0); // Capture-IR
+	nextState(0); // Shift-IR
+	sendBits<4, uint8_t>(value);
+	nextState(1); // Update-IR
+	nextState(0); // Idle
+}
+
+void JTAG::pulseClock()
 {
 	_delay_us(1);
 	setBit(TCK);
@@ -290,7 +361,7 @@ void JTAG::pulseClock() const
 	clrBit(TCK);
 }
 
-void JTAG::pulseClocks(uint8_t count) const
+void JTAG::pulseClocks(uint8_t count)
 {
 	while (count-- > 0)
 		pulseClock();
