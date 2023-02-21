@@ -244,8 +244,8 @@ void JTAG::readFlash(uint8_t* buffer, uint32_t address, bool customBlock)
 	sendICPData(ICP_SET_IB_OFFSET_H);
 	sendICPData((address & 0x0000FF00) >> 8);
 #if CHIP_TYPE == 4 || CHIP_TYPE == 7
-	sendData8(ICP_SET_XPAGE);
-	sendData8((address & 0x00FF0000) >> 16);
+	sendICPData(ICP_SET_XPAGE);
+	sendICPData((address & 0x00FF0000) >> 16);
 #endif
 
 	sendICPData(customBlock ? ICP_READ_CUSTOM_BLOCK : ICP_READ_FLASH);
