@@ -71,7 +71,7 @@ private:
 
 	enum JTAGInstruction : uint8_t
 	{
-		JTAG_GET_ID = 14,
+		JTAG_IDCODE = 14,
 	};
 
 	void reset();

@@ -224,7 +224,7 @@ uint16_t JTAG::getID()
 {
 	switchMode(Mode::JTAG);
 
-	sendInstruction(JTAG_GET_ID);
+	sendInstruction(JTAG_IDCODE);
 	return receiveData<16, uint16_t>();
 }
 
