@@ -41,7 +41,7 @@ int main()
 #if CHIP_PRODUCT_BLOCK == 1 && CHIP_CUSTOM_BLOCK == 3
 		serialWrite("\r\nDumping part number:\r\n");
 
-		jtag.readFlash(buffer, sizeof(buffer), 0x1200, true);
+		jtag.readFlashICP(buffer, sizeof(buffer), 0x1200, true);
 		for (uint8_t n = 0; n < 5; ++n)
 			serialWriteHex(buffer[n + 9]);
 		serialWrite("\r\n");
@@ -51,7 +51,7 @@ int main()
 
 		for (uint32_t a = 0; a < CHIP_FLASH_SIZE; a += sizeof(buffer))
 		{
-			jtag.readFlash(buffer, sizeof(buffer), a, false);
+			jtag.readFlashICP(buffer, sizeof(buffer), a, false);
 			for (auto n : buffer)
 				serialWriteHex(n);
 			serialWrite("\r\n");

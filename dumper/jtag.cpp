@@ -250,7 +250,7 @@ uint16_t JTAG::getID()
 	return receiveData<16, uint16_t>();
 }
 
-void JTAG::readFlash(uint8_t* buffer, uint8_t bufferSize, uint32_t address, bool customBlock)
+void JTAG::readFlashICP(uint8_t* buffer, uint8_t bufferSize, uint32_t address, bool customBlock)
 {
 	switchMode(Mode::ICP);
 
@@ -275,6 +275,81 @@ void JTAG::readFlash(uint8_t* buffer, uint8_t bufferSize, uint32_t address, bool
 		buffer[n] = receiveICPData();
 
 	reset();
+}
+
+void JTAG::readFlashJTAG(uint8_t* buffer, uint8_t bufferSize, uint32_t address, bool customBlock)
+{
+	if (customBlock)
+	{
+		// not supported
+		for (uint8_t n = 0; n < bufferSize; ++n)
+			buffer[n] = 0;
+		return;
+	}
+
+	switchMode(Mode::JTAG);
+
+#if CHIP_FLASH_SIZE > 65536
+	uint8_t bank = address >> 15;
+	if (bank > 0)
+	{
+		// banks 1-N are mapped to upper half of address space
+		address &= 0x00007FFF;
+		address |= 0x00008000;
+	}
+
+	// MOV PBANKLO, 0x55
+	sendData<8>(reverseBits(0x75));
+	sendData<8>(reverseBits(0xB7));
+	sendData<8>(reverseBits(0x55));
+
+	// MOV PBANK, bank
+	sendData<8>(reverseBits(0x75));
+	sendData<8>(reverseBits(0xB6));
+	sendData<8>(reverseBits(bank));
+
+	// NOPs
+	sendData<8>(reverseBits(0x00));
+	sendData<8>(reverseBits(0x00));
+	sendData<8>(reverseBits(0x00));
+	sendData<8>(reverseBits(0x00));
+#endif
+
+	sendInstruction(0);
+
+	for (uint8_t n = 0; n < bufferSize + 1; ++n, ++address)
+	{
+		nextState(1); // Select-DR
+		nextState(0); // Capture-DR
+		nextState(0); // Shift-DR
+
+		// send and receive data in single data shift
+		for (uint16_t m = 0x8000; m; m >>= 1)
+			nextState(0, address & m);
+
+		// meaning of this sequence is unknown to me
+		nextState(0, 0);
+		nextState(0, 0);
+		nextState(0, 0);
+		nextState(0, 1);
+		nextState(0, 0);
+		nextState(0, 0);
+
+		uint8_t data = 0;
+		for (uint8_t n = 0; n < 7; ++n, data <<= 1)
+			data |= nextState(0, 0);
+		data |= nextState(1);
+
+		nextState(1); // Update-DR
+		nextState(0); // Idle
+		nextState(0); // Idle? Needed, don't know why
+
+		if (n > 0)
+			// first data is garbage, next data is a byte read from previously shifted address
+			buffer[n - 1] = data;
+	}
+
+	sendInstruction(12);
 }
 
 void JTAG::sendICPData(uint8_t value)
