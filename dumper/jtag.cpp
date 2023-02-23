@@ -230,7 +230,6 @@ uint16_t JTAG::getID()
 
 void JTAG::readFlash(uint8_t* buffer, uint32_t address, bool customBlock)
 {
-	reset();
 	switchMode(Mode::ICP);
 
 #if CHIP_TYPE != 1
@@ -252,6 +251,8 @@ void JTAG::readFlash(uint8_t* buffer, uint32_t address, bool customBlock)
 
 	for (uint8_t n = 0; n < 16; ++n)
 		buffer[n] = receiveICPData();
+
+	reset();
 }
 
 void JTAG::sendMode(Mode mode)
