@@ -39,6 +39,7 @@ public:
 	static const uint8_t TCK = 5;	// D5
 
 	void connect();
+	void disconnect();
 
 	bool checkJTAG();
 	bool checkICP();
@@ -76,8 +77,7 @@ private:
 
 	void reset();
 	void switchMode(Mode mode);
-
-	static void sendMode(Mode mode);
+	void startMode() const;
 
 	static void sendICPData(uint8_t value);
 	static uint8_t receiveICPData();

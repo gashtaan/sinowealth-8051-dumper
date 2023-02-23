@@ -64,5 +64,5 @@ int main()
 		serialWrite("Connection failed\r\n");
 	}
 
-	for (;;);
+	jtag.disconnect();
 }

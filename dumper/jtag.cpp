@@ -80,28 +80,26 @@ void JTAG::connect()
 	_delay_us(8);
 
 	clrBit(TMS);
-	clrBit(TCK);
-	_delay_us(2);
 
-	sendMode(Mode::ICP);
-
-	setBit(TCK);
-	_delay_us(2);
+	m_mode = Mode::ICP;
+	startMode();
 
 	for (uint16_t n = 0; n < 25600; ++n)
 	{
-		clrBit(TCK);
-		_delay_us(2);
 		setBit(TCK);
+		_delay_us(2);
+		clrBit(TCK);
 		_delay_us(2);
 	}
 
-	setBit(TMS);
-	_delay_us(5);
-	clrBit(TMS);
-	_delay_us(5);
+	reset();
+}
 
-	m_mode = Mode::READY;
+void JTAG::disconnect()
+{
+	// for debugging purposes it's convenient to leave connection in ICP mode as it will survive host reset/upload
+	// (TCK must be held high in READY state, if it's set low during host reset/upload, target will disconnect)
+	switchMode(Mode::ICP);
 }
 
 void JTAG::reset()
@@ -116,6 +114,7 @@ void JTAG::reset()
 			nextState(1);
 
 		setBit(TCK);
+
 		clrBit(TMS);
 	}
 	else
@@ -140,17 +139,11 @@ void JTAG::switchMode(Mode mode)
 		reset();
 
 	m_mode = mode;
-
-	clrBit(TCK);
-	_delay_us(2);
-
-	sendMode(m_mode);
+	startMode();
 
 	if (m_mode == Mode::ICP)
 	{
 		_delay_us(800);
-		setBit(TCK);
-		_delay_us(2);
 
 		pingICP();
 	}
@@ -187,6 +180,35 @@ void JTAG::switchMode(Mode mode)
 
 		sendInstruction(12);
 	}
+}
+
+void JTAG::startMode() const
+{
+	clrBit(TCK);
+	_delay_us(2);
+
+	for (uint8_t m = 0x80; m; m >>= 1)
+	{
+		if (uint8_t(m_mode) & m)
+			setBit(TDI);
+		else
+			clrBit(TDI);
+
+		setBit(TCK);
+		_delay_us(2);
+		clrBit(TCK);
+		_delay_us(2);
+	}
+
+	setBit(TCK);
+	_delay_us(2);
+	clrBit(TCK);
+	_delay_us(2);
+
+	setBit(TCK);
+	_delay_us(2);
+	clrBit(TCK);
+	_delay_us(2);
 }
 
 bool JTAG::checkJTAG()
@@ -253,32 +275,6 @@ void JTAG::readFlash(uint8_t* buffer, uint8_t bufferSize, uint32_t address, bool
 		buffer[n] = receiveICPData();
 
 	reset();
-}
-
-void JTAG::sendMode(Mode mode)
-{
-	for (uint8_t m = 0x80; m; m >>= 1)
-	{
-		if (uint8_t(mode) & m)
-			setBit(TDI);
-		else
-			clrBit(TDI);
-
-		setBit(TCK);
-		_delay_us(2);
-		clrBit(TCK);
-		_delay_us(2);
-	}
-
-	setBit(TCK);
-	_delay_us(2);
-	clrBit(TCK);
-	_delay_us(2);
-
-	setBit(TCK);
-	_delay_us(2);
-	clrBit(TCK);
-	_delay_us(2);
 }
 
 void JTAG::sendICPData(uint8_t value)
