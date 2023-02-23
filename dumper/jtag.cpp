@@ -228,7 +228,7 @@ uint16_t JTAG::getID()
 	return receiveData<16, uint16_t>();
 }
 
-void JTAG::readFlash(uint8_t* buffer, uint32_t address, bool customBlock)
+void JTAG::readFlash(uint8_t* buffer, uint8_t bufferSize, uint32_t address, bool customBlock)
 {
 	switchMode(Mode::ICP);
 
@@ -249,7 +249,7 @@ void JTAG::readFlash(uint8_t* buffer, uint32_t address, bool customBlock)
 
 	sendICPData(customBlock ? ICP_READ_CUSTOM_BLOCK : ICP_READ_FLASH);
 
-	for (uint8_t n = 0; n < 16; ++n)
+	for (uint8_t n = 0; n < bufferSize; ++n)
 		buffer[n] = receiveICPData();
 
 	reset();

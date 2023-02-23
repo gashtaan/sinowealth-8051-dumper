@@ -47,7 +47,7 @@ public:
 
 	uint16_t getID();
 
-	void readFlash(uint8_t* buffer, uint32_t address, bool customBlock);
+	void readFlash(uint8_t* buffer, uint8_t bufferSize, uint32_t address, bool customBlock);
 
 private:
 	enum class Mode
