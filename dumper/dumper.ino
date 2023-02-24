@@ -32,6 +32,10 @@ int main()
 	{
 		serialWrite("Connection established\r\n");
 
+		// wait for terminal connected and user ready
+		serialWrite("\r\nPress ENTER to proceed\r\n");
+		while (!serialWait());
+
 		serialWrite("\r\nJTAG ID: ");
 		uint16_t id = jtag.getID();
 		serialWriteHex(id >> 8);

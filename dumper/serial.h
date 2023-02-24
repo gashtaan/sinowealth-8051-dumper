@@ -18,3 +18,4 @@ void serialInit();
 void serialWrite(char c);
 void serialWrite(const char* str);
 void serialWriteHex(uint8_t byte);
+bool serialWait();

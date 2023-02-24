@@ -46,3 +46,11 @@ void serialWriteHex(uint8_t byte)
 	serialWrite(hexs[(byte & 0xF0) >> 4]);
 	serialWrite(hexs[(byte & 0x0F)]);
 }
+
+bool serialWait()
+{
+	if (UCSR0A & _BV(RXC0) && (UDR0 == '\r' || UDR0 == '\n'))
+		return true;
+
+	return false;
+}
