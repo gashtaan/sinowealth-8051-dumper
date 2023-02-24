@@ -61,6 +61,40 @@ int main()
 		serialWrite("\r\n");
 #endif
 
+#if CHIP_CUSTOM_BLOCK > 0
+		serialWrite("\r\nDumping code options:\r\n");
+
+		uint8_t options_size = 64;
+		uint16_t options_address = CHIP_FLASH_SIZE - options_size;
+		bool options_in_flash = true;
+		switch (CHIP_CUSTOM_BLOCK)
+		{
+			case 2:
+				if (CHIP_TYPE == 2)
+					options_address = 0x0800, options_in_flash = false;
+				break;
+			case 3:
+				if (CHIP_TYPE == 2)
+					options_address = 0x1000, options_in_flash = false;
+				break;
+			case 4:
+				options_address = 0x2000, options_in_flash = false;
+				break;
+			case 6:
+				options_size = 32;
+				options_address = CHIP_FLASH_SIZE - options_size;
+				break;
+		}
+
+		for (uint32_t a = options_address; a < options_address + options_size; a += sizeof(buffer))
+		{
+			jtag.readFlashICP(buffer, sizeof(buffer), a, !options_in_flash);
+			for (auto n : buffer)
+				serialWriteHex(n);
+			serialWrite("\r\n");
+		}
+#endif
+
 		serialWrite("\r\nDumping flash memory:\r\n");
 
 		for (uint32_t a = 0; a < CHIP_FLASH_SIZE; a += sizeof(buffer))
