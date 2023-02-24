@@ -38,10 +38,24 @@ int main()
 		serialWriteHex(id & 0xFF);
 		serialWrite("\r\n");
 
-#if CHIP_PRODUCT_BLOCK == 1 && CHIP_CUSTOM_BLOCK == 3
+#if CHIP_PRODUCT_BLOCK == 1
 		serialWrite("\r\nDumping part number:\r\n");
 
-		jtag.readFlashICP(buffer, sizeof(buffer), 0x1200, true);
+		uint16_t custom_block_address = 0;
+		switch (CHIP_CUSTOM_BLOCK)
+		{
+			case 2:
+				custom_block_address = 0x0A00;
+				break;
+			case 3:
+				custom_block_address = 0x1200;
+				break;
+			case 4:
+				custom_block_address = 0x2200;
+				break;
+		}
+
+		jtag.readFlashICP(buffer, sizeof(buffer), custom_block_address, true);
 		for (uint8_t n = 0; n < 5; ++n)
 			serialWriteHex(buffer[n + 9]);
 		serialWrite("\r\n");
