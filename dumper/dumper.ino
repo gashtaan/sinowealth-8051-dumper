@@ -68,7 +68,7 @@ int main()
 #if CHIP_CUSTOM_BLOCK > 0
 		serialWrite("\r\nDumping code options:\r\n");
 
-		uint8_t options_size = 64;
+		uint16_t options_size = 64;
 		uint16_t options_address = CHIP_FLASH_SIZE - options_size;
 		bool options_in_flash = true;
 		switch (CHIP_CUSTOM_BLOCK)
@@ -80,6 +80,8 @@ int main()
 			case 3:
 				if (CHIP_TYPE == 2)
 					options_address = 0x1000, options_in_flash = false;
+				else if (CHIP_TYPE == 7)
+					options_address = 0x1000, options_in_flash = false, options_size = 512;
 				break;
 			case 4:
 				options_address = 0x2000, options_in_flash = false;
