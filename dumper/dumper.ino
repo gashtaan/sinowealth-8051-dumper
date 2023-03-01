@@ -103,12 +103,41 @@ int main()
 
 		serialWrite("\r\nDumping flash memory:\r\n");
 
-		for (uint32_t a = 0; a < CHIP_FLASH_SIZE; a += sizeof(buffer))
+		// assign read method here or let it be chosen automatically
+		JTAG::readFlashMethod read_method = nullptr;
+
+		if (!read_method)
 		{
-			jtag.readFlashICP(buffer, sizeof(buffer), a, false);
-			for (auto n : buffer)
-				serialWriteHex(n);
-			serialWrite("\r\n");
+			// try to use each read method until some succeeds
+			const JTAG::readFlashMethod read_methods[] = {
+				&JTAG::readFlashICP,
+				&JTAG::readFlashJTAG,
+			};
+			for (const auto method : read_methods)
+			{
+				if ((jtag.*method)(buffer, sizeof(uint32_t), 0, false) && *(uint32_t*)buffer != 0)
+				{
+					// method succeed and reads reset/IE0 handlers expected at address 0
+					read_method = method;
+					break;
+				}
+
+				// try another one
+			}
+
+			if (!read_method)
+				serialWrite("The flash memory is blank or protected by security bits\r\n");
+		}
+
+		if (read_method)
+		{
+			for (uint32_t a = 0; a < CHIP_FLASH_SIZE; a += sizeof(buffer))
+			{
+				(jtag.*read_method)(buffer, sizeof(buffer), a, false);
+				for (auto n : buffer)
+					serialWriteHex(n);
+				serialWrite("\r\n");
+			}
 		}
 
 		serialWrite("\r\nDone!\r\n");

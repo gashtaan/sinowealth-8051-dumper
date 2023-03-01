@@ -48,8 +48,9 @@ public:
 
 	uint16_t getID();
 
-	void readFlashICP(uint8_t* buffer, uint8_t bufferSize, uint32_t address, bool customBlock);
-	void readFlashJTAG(uint8_t* buffer, uint8_t bufferSize, uint32_t address, bool customBlock);
+	typedef bool (JTAG::*readFlashMethod)(uint8_t* buffer, uint8_t bufferSize, uint32_t address, bool customBlock);
+	bool readFlashICP(uint8_t* buffer, uint8_t bufferSize, uint32_t address, bool customBlock);
+	bool readFlashJTAG(uint8_t* buffer, uint8_t bufferSize, uint32_t address, bool customBlock);
 
 private:
 	enum class Mode

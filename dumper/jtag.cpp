@@ -250,7 +250,7 @@ uint16_t JTAG::getID()
 	return receiveData<16, uint16_t>();
 }
 
-void JTAG::readFlashICP(uint8_t* buffer, uint8_t bufferSize, uint32_t address, bool customBlock)
+bool JTAG::readFlashICP(uint8_t* buffer, uint8_t bufferSize, uint32_t address, bool customBlock)
 {
 	switchMode(Mode::ICP);
 
@@ -275,17 +275,14 @@ void JTAG::readFlashICP(uint8_t* buffer, uint8_t bufferSize, uint32_t address, b
 		buffer[n] = receiveICPData();
 
 	reset();
+
+	return true;
 }
 
-void JTAG::readFlashJTAG(uint8_t* buffer, uint8_t bufferSize, uint32_t address, bool customBlock)
+bool JTAG::readFlashJTAG(uint8_t* buffer, uint8_t bufferSize, uint32_t address, bool customBlock)
 {
 	if (customBlock)
-	{
-		// not supported
-		for (uint8_t n = 0; n < bufferSize; ++n)
-			buffer[n] = 0;
-		return;
-	}
+		return false;
 
 	switchMode(Mode::JTAG);
 
@@ -350,6 +347,8 @@ void JTAG::readFlashJTAG(uint8_t* buffer, uint8_t bufferSize, uint32_t address, 
 	}
 
 	sendInstruction(12);
+
+	return true;
 }
 
 void JTAG::sendICPData(uint8_t value)
